@@ -10,36 +10,26 @@ commondir = $(includedir)/webp
 
 COMMON_SOURCES =
 COMMON_SOURCES += alpha_processing.c
-COMMON_SOURCES += alpha_processing_mips_dsp_r2.c
-COMMON_SOURCES += argb.c
-COMMON_SOURCES += argb_mips_dsp_r2.c
 COMMON_SOURCES += cpu.c
 COMMON_SOURCES += dec.c
 COMMON_SOURCES += dec_clip_tables.c
 COMMON_SOURCES += dec_mips32.c
-COMMON_SOURCES += dec_mips_dsp_r2.c
 COMMON_SOURCES += dec_neon.c
 COMMON_SOURCES += dsp.h
-COMMON_SOURCES += filters_mips_dsp_r2.c
 COMMON_SOURCES += lossless.c
 COMMON_SOURCES += lossless.h
 COMMON_SOURCES += lossless_mips32.c
-COMMON_SOURCES += lossless_mips_dsp_r2.c
 COMMON_SOURCES += lossless_neon.c
-COMMON_SOURCES += mips_macro.h
 COMMON_SOURCES += neon.h
 COMMON_SOURCES += upsampling.c
-COMMON_SOURCES += upsampling_mips_dsp_r2.c
 COMMON_SOURCES += upsampling_neon.c
 COMMON_SOURCES += yuv.c
 COMMON_SOURCES += yuv.h
 COMMON_SOURCES += yuv_mips32.c
-COMMON_SOURCES += yuv_mips_dsp_r2.c
 
 ENC_SOURCES =
 ENC_SOURCES += enc.c
 ENC_SOURCES += enc_mips32.c
-ENC_SOURCES += enc_mips_dsp_r2.c
 ENC_SOURCES += enc_neon.c
 
 libwebpdsp_avx2_la_SOURCES =

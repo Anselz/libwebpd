@@ -61,8 +61,18 @@ static int EncodeLossless(const uint8_t* const data, int width, int height,
   if (!WebPPictureAlloc(&picture)) return 0;
 
   // Transfer the alpha values to the green channel.
-  WebPDispatchAlphaToGreen(data, width, picture.width, picture.height,
-                           picture.argb, picture.argb_stride);
+  {
+    int i, j;
+    uint32_t* dst = picture.argb;
+    const uint8_t* src = data;
+    for (j = 0; j < picture.height; ++j) {
+      for (i = 0; i < picture.width; ++i) {
+        dst[i] = src[i] << 8;  // we leave A/R/B channels zero'd.
+      }
+      src += width;
+      dst += picture.argb_stride;
+    }
+  }
 
   WebPConfigInit(&config);
   config.lossless = 1;
@@ -77,7 +87,7 @@ static int EncodeLossless(const uint8_t* const data, int width, int height,
   WebPPictureFree(&picture);
   ok = ok && !bw->error_;
   if (!ok) {
-    VP8LBitWriterWipeOut(bw);
+    VP8LBitWriterDestroy(bw);
     return 0;
   }
   return 1;
@@ -133,10 +143,10 @@ static int EncodeAlphaInternal(const uint8_t* const data, int width, int height,
       if (output_size > data_size) {
         // compressed size is larger than source! Revert to uncompressed mode.
         method = ALPHA_NO_COMPRESSION;
-        VP8LBitWriterWipeOut(&tmp_bw);
+        VP8LBitWriterDestroy(&tmp_bw);
       }
     } else {
-      VP8LBitWriterWipeOut(&tmp_bw);
+      VP8LBitWriterDestroy(&tmp_bw);
       return 0;
     }
   }
@@ -156,7 +166,7 @@ static int EncodeAlphaInternal(const uint8_t* const data, int width, int height,
   ok = ok && VP8BitWriterAppend(&result->bw, output, output_size);
 
   if (method != ALPHA_NO_COMPRESSION) {
-    VP8LBitWriterWipeOut(&tmp_bw);
+    VP8LBitWriterDestroy(&tmp_bw);
   }
   ok = ok && !result->bw.error_;
   result->score = VP8BitWriterSize(&result->bw);
@@ -366,7 +376,6 @@ static int CompressAlphaJob(VP8Encoder* const enc, void* dummy) {
 }
 
 void VP8EncInitAlpha(VP8Encoder* const enc) {
-  WebPInitAlphaProcessing();
   enc->has_alpha_ = WebPPictureHasTransparency(enc->pic_);
   enc->alpha_data_ = NULL;
   enc->alpha_data_size_ = 0;
@@ -421,3 +430,4 @@ int VP8EncDeleteAlpha(VP8Encoder* const enc) {
   enc->has_alpha_ = 0;
   return ok;
 }
+

@@ -31,7 +31,7 @@ extern "C" {
 // version numbers
 #define DEC_MAJ_VERSION 0
 #define DEC_MIN_VERSION 4
-#define DEC_REV_VERSION 2
+#define DEC_REV_VERSION 3
 
 // intra prediction modes
 enum { B_DC_PRED = 0,   // 4x4 modes
@@ -69,7 +69,7 @@ enum { MB_FEATURE_TREE_PROBS = 3,
        NUM_PROBAS = 11,
        NUM_MV_PROBAS = 19 };
 
-// YUV-cache parameters. Cache is 32-bytes wide (= one cacheline).
+// YUV-cache parameters.
 // Constraints are: We need to store one 16x16 block of luma samples (y),
 // and two 8x8 chroma blocks (u/v). These are better be 16-bytes aligned,
 // in order to be SIMD-friendly. We also need to store the top, left and
@@ -91,6 +91,8 @@ enum { MB_FEATURE_TREE_PROBS = 3,
 //  'y' = y-samples   'u' = u-samples     'v' = u-samples
 //  '|' = left sample,   '-' = top sample,    '+' = top-left sample
 //  't' = extra top-right sample for 4x4 modes
+// With this layout, BPS (=Bytes Per Scan-line) is one cacheline size.
+#define BPS       32    // this is the common stride used by yuv[]
 #define YUV_SIZE (BPS * 17 + BPS * 9)
 #define Y_SIZE   (BPS * 17)
 #define Y_OFF    (BPS * 1 + 8)
@@ -141,7 +143,6 @@ typedef struct {
   uint8_t segments_[MB_FEATURE_TREE_PROBS];
   // Type: 0:Intra16-AC  1:Intra16-DC   2:Chroma   3:Intra4
   VP8BandProbas bands_[NUM_TYPES][NUM_BANDS];
-  const VP8BandProbas* bands_ptr_[NUM_TYPES][16 + 1];
 } VP8Proba;
 
 // Filter parameters

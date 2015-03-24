@@ -67,6 +67,8 @@ EXTRA_FLAGS += -Wmissing-prototypes
 EXTRA_FLAGS += -Wmissing-declarations
 EXTRA_FLAGS += -Wdeclaration-after-statement
 EXTRA_FLAGS += -Wshadow
+EXTRA_FLAGS += -Wformat-security -Wformat-nonliteral
+
 # EXTRA_FLAGS += -Wvla
 
 # AVX2-specific flags:
@@ -108,37 +110,28 @@ DEMUX_OBJS = \
 
 DSP_DEC_OBJS = \
     src/dsp/alpha_processing.o \
-    src/dsp/alpha_processing_mips_dsp_r2.o \
     src/dsp/alpha_processing_sse2.o \
-    src/dsp/argb.o \
-    src/dsp/argb_mips_dsp_r2.o \
     src/dsp/cpu.o \
     src/dsp/dec.o \
     src/dsp/dec_clip_tables.o \
     src/dsp/dec_mips32.o \
-    src/dsp/dec_mips_dsp_r2.o \
     src/dsp/dec_neon.o \
     src/dsp/dec_sse2.o \
-    src/dsp/filters_mips_dsp_r2.o \
     src/dsp/lossless.o \
     src/dsp/lossless_mips32.o \
-    src/dsp/lossless_mips_dsp_r2.o \
     src/dsp/lossless_neon.o \
     src/dsp/lossless_sse2.o \
     src/dsp/upsampling.o \
-    src/dsp/upsampling_mips_dsp_r2.o \
     src/dsp/upsampling_neon.o \
     src/dsp/upsampling_sse2.o \
     src/dsp/yuv.o \
     src/dsp/yuv_mips32.o \
-    src/dsp/yuv_mips_dsp_r2.o \
     src/dsp/yuv_sse2.o \
 
 DSP_ENC_OBJS = \
     src/dsp/enc.o \
     src/dsp/enc_avx2.o \
     src/dsp/enc_mips32.o \
-    src/dsp/enc_mips_dsp_r2.o \
     src/dsp/enc_neon.o \
     src/dsp/enc_sse2.o \
 
@@ -152,7 +145,6 @@ ENC_OBJS = \
     src/enc/frame.o \
     src/enc/histogram.o \
     src/enc/iterator.o \
-    src/enc/near_lossless.o \
     src/enc/picture.o \
     src/enc/picture_csp.o \
     src/enc/picture_psnr.o \
@@ -221,7 +213,6 @@ HDRS = \
     src/dec/webpi.h \
     src/dsp/dsp.h \
     src/dsp/lossless.h \
-    src/dsp/mips_macro.h \
     src/dsp/neon.h \
     src/dsp/yuv.h \
     src/dsp/yuv_tables_sse2.h \

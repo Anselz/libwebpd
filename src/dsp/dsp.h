@@ -24,8 +24,6 @@
 extern "C" {
 #endif
 
-#define BPS 32   // this is the common stride for enc/dec
-
 //------------------------------------------------------------------------------
 // CPU detection
 
@@ -68,7 +66,10 @@ extern "C" {
 #define WEBP_ANDROID_NEON  // Android targets that might support NEON
 #endif
 
-#if defined(__ARM_NEON__) || defined(WEBP_ANDROID_NEON) || defined(__aarch64__)
+// The intrinsics currently cause compiler errors with arm-nacl-gcc and the
+// inline assembly would need to be modified for use with Native Client.
+#if (defined(__ARM_NEON__) || defined(WEBP_ANDROID_NEON) || \
+     defined(__aarch64__)) && !defined(__native_client__)
 #define WEBP_USE_NEON
 #endif
 
@@ -76,18 +77,6 @@ extern "C" {
 #define WEBP_USE_MIPS32
 #if (__mips_isa_rev >= 2)
 #define WEBP_USE_MIPS32_R2
-#if defined(__mips_dspr2) || (__mips_dsp_rev >= 2)
-#define WEBP_USE_MIPS_DSP_R2
-#endif
-#endif
-#endif
-
-// This macro prevents thread_sanitizer from reporting known concurrent writes.
-#define WEBP_TSAN_IGNORE_FUNCTION
-#if defined(__has_feature)
-#if __has_feature(thread_sanitizer)
-#undef WEBP_TSAN_IGNORE_FUNCTION
-#define WEBP_TSAN_IGNORE_FUNCTION __attribute__((no_sanitize_thread))
 #endif
 #endif
 
@@ -97,12 +86,11 @@ typedef enum {
   kAVX,
   kAVX2,
   kNEON,
-  kMIPS32,
-  kMIPSdspR2
+  kMIPS32
 } CPUFeature;
 // returns true if the CPU supports the feature.
 typedef int (*VP8CPUInfo)(CPUFeature feature);
-WEBP_EXTERN(VP8CPUInfo) VP8GetCPUInfo;
+extern VP8CPUInfo VP8GetCPUInfo;
 
 //------------------------------------------------------------------------------
 // Encoding
@@ -134,42 +122,26 @@ extern VP8WMetric VP8TDisto4x4, VP8TDisto16x16;
 
 typedef void (*VP8BlockCopy)(const uint8_t* src, uint8_t* dst);
 extern VP8BlockCopy VP8Copy4x4;
-extern VP8BlockCopy VP8Copy16x8;
 // Quantization
 struct VP8Matrix;   // forward declaration
 typedef int (*VP8QuantizeBlock)(int16_t in[16], int16_t out[16],
                                 const struct VP8Matrix* const mtx);
-// Same as VP8QuantizeBlock, but quantizes two consecutive blocks.
-typedef int (*VP8Quantize2Blocks)(int16_t in[32], int16_t out[32],
-                                  const struct VP8Matrix* const mtx);
-
 extern VP8QuantizeBlock VP8EncQuantizeBlock;
-extern VP8Quantize2Blocks VP8EncQuantize2Blocks;
 
 // specific to 2nd transform:
 typedef int (*VP8QuantizeBlockWHT)(int16_t in[16], int16_t out[16],
                                    const struct VP8Matrix* const mtx);
 extern VP8QuantizeBlockWHT VP8EncQuantizeBlockWHT;
 
-extern const int VP8DspScan[16 + 4 + 4];
-
-// Collect histogram for susceptibility calculation.
-#define MAX_COEFF_THRESH   31   // size of histogram used by CollectHistogram.
-typedef struct {
-  // We only need to store max_value and last_non_zero, not the distribution.
-  int max_value;
-  int last_non_zero;
-} VP8Histogram;
+// Collect histogram for susceptibility calculation and accumulate in histo[].
+struct VP8Histogram;
 typedef void (*VP8CHisto)(const uint8_t* ref, const uint8_t* pred,
                           int start_block, int end_block,
-                          VP8Histogram* const histo);
+                          struct VP8Histogram* const histo);
+extern const int VP8DspScan[16 + 4 + 4];
 extern VP8CHisto VP8CollectHistogram;
-// General-purpose util function to help VP8CollectHistogram().
-void VP8LSetHistogramData(const int distribution[MAX_COEFF_THRESH + 1],
-                          VP8Histogram* const histo);
 
-// must be called before using any of the above
-WEBP_TSAN_IGNORE_FUNCTION void VP8EncDspInit(void);
+void VP8EncDspInit(void);   // must be called before using any of the above
 
 //------------------------------------------------------------------------------
 // Decoding
@@ -188,16 +160,15 @@ extern VP8WHT VP8TransformWHT;
 // assumed accessible when needed.
 typedef void (*VP8PredFunc)(uint8_t* dst);
 extern const VP8PredFunc VP8PredLuma16[/* NUM_B_DC_MODES */];
-extern VP8PredFunc VP8PredChroma8[/* NUM_B_DC_MODES */];
-extern VP8PredFunc VP8PredLuma4[/* NUM_BMODES */];
+extern const VP8PredFunc VP8PredChroma8[/* NUM_B_DC_MODES */];
+extern const VP8PredFunc VP8PredLuma4[/* NUM_BMODES */];
 
 // clipping tables (for filtering)
 extern const int8_t* const VP8ksclip1;  // clips [-1020, 1020] to [-128, 127]
 extern const int8_t* const VP8ksclip2;  // clips [-112, 112] to [-16, 15]
 extern const uint8_t* const VP8kclip1;  // clips [-255,511] to [0,255]
 extern const uint8_t* const VP8kabs0;   // abs(x) for x in [-255,255]
-// must be called first
-WEBP_TSAN_IGNORE_FUNCTION void VP8InitClipTables(void);
+void VP8InitClipTables(void);           // must be called first
 
 // simple filter (only for luma)
 typedef void (*VP8SimpleFilterFunc)(uint8_t* p, int stride, int thresh);
@@ -224,7 +195,7 @@ extern VP8ChromaFilterFunc VP8VFilter8i;  // filtering u and v altogether
 extern VP8ChromaFilterFunc VP8HFilter8i;
 
 // must be called before anything using the above
-WEBP_TSAN_IGNORE_FUNCTION void VP8DspInit(void);
+void VP8DspInit(void);
 
 //------------------------------------------------------------------------------
 // WebP I/O
@@ -269,15 +240,13 @@ typedef void (*WebPYUV444Converter)(const uint8_t* y,
                                     const uint8_t* u, const uint8_t* v,
                                     uint8_t* dst, int len);
 
-extern WebPYUV444Converter WebPYUV444Converters[/* MODE_LAST */];
+extern const WebPYUV444Converter WebPYUV444Converters[/* MODE_LAST */];
 
 // Must be called before using the WebPUpsamplers[] (and for premultiplied
 // colorspaces like rgbA, rgbA4444, etc)
-WEBP_TSAN_IGNORE_FUNCTION void WebPInitUpsamplers(void);
+void WebPInitUpsamplers(void);
 // Must be called before using WebPSamplers[]
-WEBP_TSAN_IGNORE_FUNCTION void WebPInitSamplers(void);
-// Must be called before using WebPYUV444Converters[]
-WEBP_TSAN_IGNORE_FUNCTION void WebPInitYUV444Converters(void);
+void WebPInitSamplers(void);
 
 //------------------------------------------------------------------------------
 // Utilities for processing transparent channel.
@@ -290,18 +259,6 @@ extern void (*WebPApplyAlphaMultiply)(
 // Same, buf specifically for RGBA4444 format
 extern void (*WebPApplyAlphaMultiply4444)(
     uint8_t* rgba4444, int w, int h, int stride);
-
-// Dispatch the values from alpha[] plane to the ARGB destination 'dst'.
-// Returns true if alpha[] plane has non-trivial values different from 0xff.
-extern int (*WebPDispatchAlpha)(const uint8_t* alpha, int alpha_stride,
-                                int width, int height,
-                                uint8_t* dst, int dst_stride);
-
-// Transfer packed 8b alpha[] values to green channel in dst[], zero'ing the
-// A/R/B values. 'dst_stride' is the stride for dst[] in uint32_t units.
-extern void (*WebPDispatchAlphaToGreen)(const uint8_t* alpha, int alpha_stride,
-                                        int width, int height,
-                                        uint32_t* dst, int dst_stride);
 
 // Extract the alpha values from 32b values in argb[] and pack them into alpha[]
 // (this is the opposite of WebPDispatchAlpha).
@@ -329,23 +286,8 @@ void WebPMultRows(uint8_t* ptr, int stride,
                   const uint8_t* alpha, int alpha_stride,
                   int width, int num_rows, int inverse);
 
-// Plain-C versions, used as fallback by some implementations.
-void WebPMultRowC(uint8_t* const ptr, const uint8_t* const alpha,
-                  int width, int inverse);
-void WebPMultARGBRowC(uint32_t* const ptr, int width, int inverse);
-
 // To be called first before using the above.
-WEBP_TSAN_IGNORE_FUNCTION void WebPInitAlphaProcessing(void);
-
-// ARGB making functions.
-extern void (*VP8PackARGB)(const uint8_t* a, const uint8_t* r,
-                           const uint8_t* g, const uint8_t* b, int len,
-                           int step, uint32_t* out);
-extern void (*VP8PackRGB)(const uint8_t* r, const uint8_t* g, const uint8_t* b,
-                          int len, int step, uint32_t* out);
-
-// To be called first before using the above.
-WEBP_TSAN_IGNORE_FUNCTION void VP8EncDspARGBInit(void);
+void WebPInitAlphaProcessing(void);
 
 #ifdef __cplusplus
 }    // extern "C"

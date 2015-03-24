@@ -22,6 +22,7 @@
 
 #ifdef WEBP_HAVE_PNG
 #include <png.h>
+#include <setjmp.h>   // note: this must be included *after* png.h
 #endif
 
 #ifdef HAVE_WINCODEC_H
@@ -192,8 +193,8 @@ static int WritePNG(FILE* out_file, const WebPDecBuffer* const buffer) {
   uint8_t* const rgb = buffer->u.RGBA.rgba;
   const int stride = buffer->u.RGBA.stride;
   const int has_alpha = (buffer->colorspace == MODE_RGBA);
-  png_structp png;
-  png_infop info;
+  volatile png_structp png;
+  volatile png_infop info;
   png_uint_32 y;
 
   png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
@@ -203,11 +204,11 @@ static int WritePNG(FILE* out_file, const WebPDecBuffer* const buffer) {
   }
   info = png_create_info_struct(png);
   if (info == NULL) {
-    png_destroy_write_struct(&png, NULL);
+    png_destroy_write_struct((png_structpp)&png, NULL);
     return 0;
   }
   if (setjmp(png_jmpbuf(png))) {
-    png_destroy_write_struct(&png, &info);
+    png_destroy_write_struct((png_structpp)&png, (png_infopp)&info);
     return 0;
   }
   png_init_io(png, out_file);
@@ -221,7 +222,7 @@ static int WritePNG(FILE* out_file, const WebPDecBuffer* const buffer) {
     png_write_rows(png, &row, 1);
   }
   png_write_end(png, info);
-  png_destroy_write_struct(&png, &info);
+  png_destroy_write_struct((png_structpp)&png, (png_infopp)&info);
   return 1;
 }
 #else    // !HAVE_WINCODEC_H && !WEBP_HAVE_PNG
@@ -244,10 +245,10 @@ static int WritePPM(FILE* fout, const WebPDecBuffer* const buffer, int alpha) {
   uint32_t y;
 
   if (alpha) {
-    fprintf(fout, "P7\nWIDTH %d\nHEIGHT %d\nDEPTH 4\nMAXVAL 255\n"
+    fprintf(fout, "P7\nWIDTH %u\nHEIGHT %u\nDEPTH 4\nMAXVAL 255\n"
                   "TUPLTYPE RGB_ALPHA\nENDHDR\n", width, height);
   } else {
-    fprintf(fout, "P6\n%d %d\n255\n", width, height);
+    fprintf(fout, "P6\n%u %u\n255\n", width, height);
   }
   for (y = 0; y < height; ++y) {
     if (fwrite(rgb + y * stride, width, bytes_per_px, fout) != bytes_per_px) {
@@ -404,7 +405,7 @@ static int WriteAlphaPlane(FILE* fout, const WebPDecBuffer* const buffer) {
   const int a_stride = buffer->u.YUVA.a_stride;
   uint32_t y;
   assert(a != NULL);
-  fprintf(fout, "P5\n%d %d\n255\n", width, height);
+  fprintf(fout, "P5\n%u %u\n255\n", width, height);
   for (y = 0; y < height; ++y) {
     if (fwrite(a + y * a_stride, width, 1, fout) != 1) {
       return 0;
@@ -545,11 +546,15 @@ static void Help(void) {
          "  -nofilter .... disable in-loop filtering\n"
          "  -nodither .... disable dithering\n"
          "  -dither <d> .. dithering strength (in 0..100)\n"
+#if WEBP_DECODER_ABI_VERSION > 0x0204
          "  -alpha_dither  use alpha-plane dithering if needed\n"
+#endif
          "  -mt .......... use multi-threading\n"
          "  -crop <x> <y> <w> <h> ... crop output with the given rectangle\n"
          "  -scale <w> <h> .......... scale the output (*after* any cropping)\n"
+#if WEBP_DECODER_ABI_VERSION > 0x0203
          "  -flip ........ flip the output vertically\n"
+#endif
          "  -alpha ....... only save the alpha plane\n"
          "  -incremental . use incremental decoding (useful for tests)\n"
          "  -h     ....... this help message\n"
@@ -613,8 +618,10 @@ int main(int argc, const char *argv[]) {
       format = YUV;
     } else if (!strcmp(argv[c], "-mt")) {
       config.options.use_threads = 1;
+#if WEBP_DECODER_ABI_VERSION > 0x0204
     } else if (!strcmp(argv[c], "-alpha_dither")) {
       config.options.alpha_dithering_strength = 100;
+#endif
     } else if (!strcmp(argv[c], "-nodither")) {
       config.options.dithering_strength = 0;
     } else if (!strcmp(argv[c], "-dither") && c < argc - 1) {
@@ -630,8 +637,10 @@ int main(int argc, const char *argv[]) {
       config.options.use_scaling = 1;
       config.options.scaled_width  = ExUtilGetInt(argv[++c], 0, &parse_error);
       config.options.scaled_height = ExUtilGetInt(argv[++c], 0, &parse_error);
+#if WEBP_DECODER_ABI_VERSION > 0x0203
     } else if (!strcmp(argv[c], "-flip")) {
       config.options.flip = 1;
+#endif
     } else if (!strcmp(argv[c], "-v")) {
       verbose = 1;
 #ifndef WEBP_DLL

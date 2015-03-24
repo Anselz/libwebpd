@@ -42,8 +42,6 @@
 #define snprintf _snprintf
 #endif
 
-static void Help(void);
-
 // Unfortunate global variables. Gathered into a struct for comfort.
 static struct {
   int has_animation;
@@ -80,6 +78,16 @@ static void ClearParams(void) {
   WebPDemuxReleaseChunkIterator(&kParams.iccp);
   WebPDemuxDelete(kParams.dmux);
   kParams.dmux = NULL;
+}
+
+// Sets the previous frame to the dimensions of the canvas and has it dispose
+// to background to cause the canvas to be cleared.
+static void ClearPreviousFrame(void) {
+  WebPIterator* const prev = &kParams.prev_frame;
+  prev->width = kParams.canvas_width;
+  prev->height = kParams.canvas_height;
+  prev->x_offset = prev->y_offset = 0;
+  prev->dispose_method = WEBP_MUX_DISPOSE_BACKGROUND;
 }
 
 // -----------------------------------------------------------------------------
@@ -181,6 +189,8 @@ static void decode_callback(int what) {
         if (WebPDemuxGetFrame(kParams.dmux, 1, curr)) {
           --kParams.loop_count;
           kParams.done = (kParams.loop_count == 0);
+          if (kParams.done) return;
+          ClearPreviousFrame();
         } else {
           kParams.decoding_error = 1;
           kParams.done = 1;
@@ -377,7 +387,9 @@ static void Help(void) {
          "  -nofancy ..... don't use the fancy YUV420 upscaler\n"
          "  -nofilter .... disable in-loop filtering\n"
          "  -dither <int>  dithering strength (0..100), default=50\n"
+#if WEBP_DECODER_ABI_VERSION > 0x0204
          "  -noalphadither disable alpha plane dithering\n"
+#endif
          "  -mt .......... use multi-threading\n"
          "  -info ........ print info\n"
          "  -h     ....... this help message\n"
@@ -393,14 +405,15 @@ int main(int argc, char *argv[]) {
   int c;
   WebPDecoderConfig* const config = &kParams.config;
   WebPIterator* const curr = &kParams.curr_frame;
-  WebPIterator* const prev = &kParams.prev_frame;
 
   if (!WebPInitDecoderConfig(config)) {
     fprintf(stderr, "Library version mismatch!\n");
     return -1;
   }
   config->options.dithering_strength = 50;
+#if WEBP_DECODER_ABI_VERSION > 0x0204
   config->options.alpha_dithering_strength = 100;
+#endif
   kParams.use_color_profile = 1;
 
   for (c = 1; c < argc; ++c) {
@@ -414,8 +427,10 @@ int main(int argc, char *argv[]) {
       config->options.no_fancy_upsampling = 1;
     } else if (!strcmp(argv[c], "-nofilter")) {
       config->options.bypass_filtering = 1;
+#if WEBP_DECODER_ABI_VERSION > 0x0204
     } else if (!strcmp(argv[c], "-noalphadither")) {
       config->options.alpha_dithering_strength = 0;
+#endif
     } else if (!strcmp(argv[c], "-dither") && c + 1 < argc) {
       config->options.dithering_strength =
           ExUtilGetInt(argv[++c], 0, &parse_error);
@@ -480,10 +495,7 @@ int main(int argc, char *argv[]) {
     printf("Canvas: %d x %d\n", kParams.canvas_width, kParams.canvas_height);
   }
 
-  prev->width = kParams.canvas_width;
-  prev->height = kParams.canvas_height;
-  prev->x_offset = prev->y_offset = 0;
-  prev->dispose_method = WEBP_MUX_DISPOSE_BACKGROUND;
+  ClearPreviousFrame();
 
   memset(&kParams.iccp, 0, sizeof(kParams.iccp));
   kParams.has_color_profile =

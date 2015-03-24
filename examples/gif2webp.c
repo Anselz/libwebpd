@@ -231,10 +231,6 @@ static void Help(void) {
          "                           or lossless compression heuristically\n");
   printf("  -q <float> ............. quality factor (0:small..100:big)\n");
   printf("  -m <int> ............... compression method (0=fast, 6=slowest)\n");
-  printf("  -min_size .............. minimize output size (default:off)\n"
-         "                           lossless compression by default; can be\n"
-         "                           combined with -q, -m, -lossy or -mixed\n"
-         "                           options\n");
   printf("  -kmin <int> ............ min distance between key frames\n");
   printf("  -kmax <int> ............ max distance between key frames\n");
   printf("  -f <int> ............... filter strength (0=off..100)\n");
@@ -278,7 +274,6 @@ int main(int argc, const char *argv[]) {
   int stored_icc = 0;  // Whether we have already stored an ICC profile.
   int stored_xmp = 0;
 
-  int minimize_size = 0;
   int default_kmin = 1;  // Whether to use default kmin value.
   int default_kmax = 1;
   size_t kmin = 0;
@@ -312,8 +307,6 @@ int main(int argc, const char *argv[]) {
       config.quality = ExUtilGetFloat(argv[++c], &parse_error);
     } else if (!strcmp(argv[c], "-m") && c < argc - 1) {
       config.method = ExUtilGetInt(argv[++c], 0, &parse_error);
-    } else if (!strcmp(argv[c], "-min_size")) {
-      minimize_size = 1;
     } else if (!strcmp(argv[c], "-kmax") && c < argc - 1) {
       kmax = ExUtilGetUInt(argv[++c], 0, &parse_error);
       default_kmax = 0;
@@ -458,6 +451,7 @@ int main(int argc, const char *argv[]) {
                      gif->SWidth, gif->SHeight);
             }
           }
+#if WEBP_MUX_ABI_VERSION > 0x0101
           // Set definitive canvas size.
           err = WebPMuxSetCanvasSize(mux, gif->SWidth, gif->SHeight);
           if (err != WEBP_MUX_OK) {
@@ -465,6 +459,7 @@ int main(int argc, const char *argv[]) {
                     gif->SWidth, gif->SHeight);
             goto End;
           }
+#endif
           // Allocate current buffer.
           frame.width = gif->SWidth;
           frame.height = gif->SHeight;
@@ -473,7 +468,7 @@ int main(int argc, const char *argv[]) {
           WebPUtilClearPic(&frame, NULL);
 
           // Initialize cache.
-          cache = WebPFrameCacheNew(frame.width, frame.height, minimize_size,
+          cache = WebPFrameCacheNew(frame.width, frame.height,
                                     kmin, kmax, allow_mixed);
           if (cache == NULL) goto End;
 

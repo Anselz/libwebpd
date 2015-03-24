@@ -118,7 +118,8 @@ typedef struct {
   size_t         len_;        // buffer length
   size_t         pos_;        // byte position in buf_
   int            bit_pos_;    // current bit-reading position in val_
-  int            eos_;        // true if a bit was read past the end of buffer
+  int            eos_;        // bitstream is finished
+  int            error_;      // an error occurred (buffer overflow attempt...)
 } VP8LBitReader;
 
 void VP8LInitBitReader(VP8LBitReader* const br,

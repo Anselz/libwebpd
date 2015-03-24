@@ -25,10 +25,6 @@
 extern "C" {
 #endif
 
-
-// Not a trivial literal symbol.
-#define VP8L_NON_TRIVIAL_SYM (0xffffffff)
-
 //------------------------------------------------------------------------------
 // Signatures and generic function-pointers
 
@@ -98,7 +94,7 @@ void VP8LColorIndexInverseTransformAlpha(
     const struct VP8LTransform* const transform, int y_start, int y_end,
     const uint8_t* src, uint8_t* dst);
 
-void VP8LResidualImage(int width, int height, int bits, int low_effort,
+void VP8LResidualImage(int width, int height, int bits,
                        uint32_t* const argb, uint32_t* const argb_scratch,
                        uint32_t* const image);
 
@@ -162,58 +158,10 @@ typedef VP8LStreaks (*VP8LCostCombinedCountFunc)(const uint32_t* X,
 extern VP8LCostCountFunc VP8LHuffmanCostCount;
 extern VP8LCostCombinedCountFunc VP8LHuffmanCostCombinedCount;
 
-// Get the symbol entropy for the distribution 'population'.
-// Set 'trivial_sym', if there's only one symbol present in the distribution.
-double VP8LPopulationCost(const uint32_t* const population, int length,
-                          uint32_t* const trivial_sym);
-
-// Get the combined symbol entropy for the distributions 'X' and 'Y'.
-double VP8LGetCombinedEntropy(const uint32_t* const X,
-                              const uint32_t* const Y, int length);
-
-// Estimate how many bits the combined entropy of literals and distance
-// approximately maps to.
-double VP8LHistogramEstimateBits(const VP8LHistogram* const p);
-
-// This function estimates the cost in bits excluding the bits needed to
-// represent the entropy code itself.
-double VP8LHistogramEstimateBitsBulk(const VP8LHistogram* const p);
-
 typedef void (*VP8LHistogramAddFunc)(const VP8LHistogram* const a,
                                      const VP8LHistogram* const b,
                                      VP8LHistogram* const out);
 extern VP8LHistogramAddFunc VP8LHistogramAdd;
-
-// -----------------------------------------------------------------------------
-// color mapping related functions.
-
-static WEBP_INLINE uint32_t VP8GetARGBIndex(uint32_t idx) {
-  return (idx >> 8) & 0xff;
-}
-
-static WEBP_INLINE uint8_t VP8GetAlphaIndex(uint8_t idx) {
-  return idx;
-}
-
-static WEBP_INLINE uint32_t VP8GetARGBValue(uint32_t val) {
-  return val;
-}
-
-static WEBP_INLINE uint8_t VP8GetAlphaValue(uint32_t val) {
-  return (val >> 8) & 0xff;
-}
-
-typedef void (*VP8LMapARGBFunc)(const uint32_t* src,
-                                const uint32_t* const color_map,
-                                uint32_t* dst, int y_start,
-                                int y_end, int width);
-typedef void (*VP8LMapAlphaFunc)(const uint8_t* src,
-                                 const uint32_t* const color_map,
-                                 uint8_t* dst, int y_start,
-                                 int y_end, int width);
-
-extern VP8LMapARGBFunc VP8LMapColor32b;
-extern VP8LMapAlphaFunc VP8LMapColor8b;
 
 // -----------------------------------------------------------------------------
 // PrefixEncode()

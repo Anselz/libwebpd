@@ -178,37 +178,28 @@ DEMUX_OBJS = \
 
 DSP_DEC_OBJS = \
     $(DIROBJ)\dsp\alpha_processing.obj \
-    $(DIROBJ)\dsp\alpha_processing_mips_dsp_r2.obj \
     $(DIROBJ)\dsp\alpha_processing_sse2.obj \
-    $(DIROBJ)\dsp\argb.obj \
-    $(DIROBJ)\dsp\argb_mips_dsp_r2.obj \
     $(DIROBJ)\dsp\cpu.obj \
     $(DIROBJ)\dsp\dec.obj \
     $(DIROBJ)\dsp\dec_clip_tables.obj \
     $(DIROBJ)\dsp\dec_mips32.obj \
-    $(DIROBJ)\dsp\dec_mips_dsp_r2.obj \
     $(DIROBJ)\dsp\dec_neon.obj \
     $(DIROBJ)\dsp\dec_sse2.obj \
-    $(DIROBJ)\dsp\filters_mips_dsp_r2.obj \
     $(DIROBJ)\dsp\lossless.obj \
     $(DIROBJ)\dsp\lossless_mips32.obj \
-    $(DIROBJ)\dsp\lossless_mips_dsp_r2.obj \
     $(DIROBJ)\dsp\lossless_neon.obj \
     $(DIROBJ)\dsp\lossless_sse2.obj \
     $(DIROBJ)\dsp\upsampling.obj \
-    $(DIROBJ)\dsp\upsampling_mips_dsp_r2.obj \
     $(DIROBJ)\dsp\upsampling_neon.obj \
     $(DIROBJ)\dsp\upsampling_sse2.obj \
     $(DIROBJ)\dsp\yuv.obj \
     $(DIROBJ)\dsp\yuv_mips32.obj \
-    $(DIROBJ)\dsp\yuv_mips_dsp_r2.obj \
     $(DIROBJ)\dsp\yuv_sse2.obj \
 
 DSP_ENC_OBJS = \
     $(DIROBJ)\dsp\enc.obj \
     $(DIROBJ)\dsp\enc_avx2.obj \
     $(DIROBJ)\dsp\enc_mips32.obj \
-    $(DIROBJ)\dsp\enc_mips_dsp_r2.obj \
     $(DIROBJ)\dsp\enc_neon.obj \
     $(DIROBJ)\dsp\enc_sse2.obj \
 
@@ -233,7 +224,6 @@ ENC_OBJS = \
     $(DIROBJ)\enc\frame.obj \
     $(DIROBJ)\enc\histogram.obj \
     $(DIROBJ)\enc\iterator.obj \
-    $(DIROBJ)\enc\near_lossless.obj \
     $(DIROBJ)\enc\picture.obj \
     $(DIROBJ)\enc\picture_csp.obj \
     $(DIROBJ)\enc\picture_psnr.obj \

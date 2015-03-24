@@ -287,9 +287,6 @@ struct WebPFrameCache {
                              // transparent pixels in a frame.
   int keyframe;              // Index of selected keyframe relative to 'start'.
 
-  // TODO(urvang): Create a struct WebPAnimationEncodingConfig for these
-  // encoding parameters.
-  int min_size;                  // If true, produce the smallest output.
   size_t kmin;                   // Min distance between key frames.
   size_t kmax;                   // Max distance between key frames.
   size_t count_since_key_frame;  // Frames seen since the last key frame.
@@ -322,7 +319,7 @@ static void CacheReset(WebPFrameCache* const cache) {
   cache->keyframe = KEYFRAME_NONE;
 }
 
-WebPFrameCache* WebPFrameCacheNew(int width, int height, int minimize_size,
+WebPFrameCache* WebPFrameCacheNew(int width, int height,
                                   size_t kmin, size_t kmax, int allow_mixed) {
   WebPFrameCache* cache = (WebPFrameCache*)WebPSafeCalloc(1, sizeof(*cache));
   if (cache == NULL) return NULL;
@@ -357,12 +354,7 @@ WebPFrameCache* WebPFrameCacheNew(int width, int height, int minimize_size,
   WebPUtilClearPic(&cache->prev_to_prev_canvas_disposed, NULL);
 
   // Cache data.
-  cache->min_size = minimize_size;
   cache->allow_mixed = allow_mixed;
-  if (cache->min_size) {  // Disable keyframe insertion.
-    kmax = ~0;
-    kmin = kmax - 1;
-  }
   cache->kmin = kmin;
   cache->kmax = kmax;
   cache->count_since_key_frame = 0;
@@ -588,7 +580,12 @@ static WebPEncodingError EncodeCandidate(WebPPicture* const sub_frame,
   return error_code;
 
  Err:
+#if WEBP_ENCODER_ABI_VERSION > 0x0203
   WebPMemoryWriterClear(&candidate->mem);
+#else
+  free(candidate->mem.mem);
+  memset(&candidate->mem, 0, sizeof(candidate->mem));
+#endif
   return error_code;
 }
 
@@ -674,9 +671,11 @@ static WebPEncodingError GenerateCandidates(
     }
   }
   if (candidate_lossy->evaluate) {
-    if (use_blending) {
-      // For lossy compression of a frame, it's better to replace similar blocks
-      // of pixels by a transparent block.
+    if (!is_key_frame) {
+      // For lossy compression of a frame, it's better to:
+      // * Replace transparent pixels of 'curr' with actual RGB values,
+      //   whenever possible, and
+      // * Replace similar blocks of pixels by a transparent block.
       if (!curr_canvas_saved) {  // save if not already done so.
         CopyPixels(curr_canvas, curr_canvas_tmp);
       }
@@ -685,7 +684,7 @@ static WebPEncodingError GenerateCandidates(
     error_code = EncodeCandidate(sub_frame, rect, config_lossy, use_blending,
                                  duration, candidate_lossy);
     if (error_code != VP8_ENC_OK) return error_code;
-    if (use_blending) {
+    if (!is_key_frame) {
       CopyPixels(curr_canvas_tmp, curr_canvas);  // restore
     }
   }
@@ -732,7 +731,12 @@ static void PickBestCandidate(WebPFrameCache* const cache,
         }
         cache->prev_webp_rect = candidates[i].rect;  // save for next frame.
       } else {
+#if WEBP_ENCODER_ABI_VERSION > 0x0203
         WebPMemoryWriterClear(&candidates[i].mem);
+#else
+        free(candidates[i].mem.mem);
+        memset(&candidates[i].mem, 0, sizeof(candidates[i].mem));
+#endif
         candidates[i].evaluate = 0;
       }
     }
@@ -796,10 +800,7 @@ static WebPEncodingError SetFrame(WebPFrameCache* const cache,
     GetSubRect(prev_canvas_disposed, curr_canvas, orig_rect, is_key_frame,
                &rect_bg, &sub_frame_bg);
 
-    if (cache->min_size) {  // Try both dispose methods.
-      try_dispose_bg = 1;
-      try_dispose_none = 1;
-    } else if (RectArea(&rect_bg) < RectArea(&rect_none)) {
+    if (RectArea(&rect_bg) < RectArea(&rect_none)) {
       try_dispose_bg = 1;  // Pick DISPOSE_BACKGROUND.
       try_dispose_none = 0;
     }
@@ -829,7 +830,12 @@ static WebPEncodingError SetFrame(WebPFrameCache* const cache,
  Err:
   for (i = 0; i < CANDIDATE_COUNT; ++i) {
     if (candidates[i].evaluate) {
+#if WEBP_ENCODER_ABI_VERSION > 0x0203
       WebPMemoryWriterClear(&candidates[i].mem);
+#else
+      free(candidates[i].mem.mem);
+      memset(&candidates[i].mem, 0, sizeof(candidates[i].mem));
+#endif
     }
   }
 

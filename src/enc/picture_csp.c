@@ -32,6 +32,10 @@ static const union {
 } test_endian = { 0xff000000u };
 #define ALPHA_IS_LAST (test_endian.bytes[3] == 0xff)
 
+static WEBP_INLINE uint32_t MakeARGB32(int a, int r, int g, int b) {
+  return (((uint32_t)a << 24) | (r << 16) | (g << 8) | b);
+}
+
 //------------------------------------------------------------------------------
 // Detection of non-trivial transparency
 
@@ -974,9 +978,11 @@ int WebPPictureARGBToYUVA(WebPPicture* picture, WebPEncCSP colorspace) {
   return PictureARGBToYUVA(picture, colorspace, 0.f, 0);
 }
 
+#if WEBP_ENCODER_ABI_VERSION > 0x0204
 int WebPPictureSmartARGBToYUVA(WebPPicture* picture) {
   return PictureARGBToYUVA(picture, WEBP_YUV420, 0.f, 1);
 }
+#endif
 
 //------------------------------------------------------------------------------
 // call for YUVA -> ARGB conversion
@@ -1060,22 +1066,14 @@ static int Import(WebPPicture* const picture,
   }
   if (!WebPPictureAlloc(picture)) return 0;
 
-  VP8EncDspARGBInit();
-
   assert(step >= (import_alpha ? 4 : 3));
-  if (import_alpha) {
-    for (y = 0; y < height; ++y) {
-      uint32_t* const dst = &picture->argb[y * picture->argb_stride];
-      const int offset = y * rgb_stride;
-      VP8PackARGB(a_ptr + offset, r_ptr + offset, g_ptr + offset,
-                  b_ptr + offset, width, step, dst);
-    }
-  } else {
-    for (y = 0; y < height; ++y) {
-      uint32_t* const dst = &picture->argb[y * picture->argb_stride];
-      const int offset = y * rgb_stride;
-      VP8PackRGB(r_ptr + offset, g_ptr + offset, b_ptr + offset,
-                 width, step, dst);
+  for (y = 0; y < height; ++y) {
+    uint32_t* const dst = &picture->argb[y * picture->argb_stride];
+    int x;
+    for (x = 0; x < width; ++x) {
+      const int offset = step * x + y * rgb_stride;
+      dst[x] = MakeARGB32(import_alpha ? a_ptr[offset] : 0xff,
+                          r_ptr[offset], g_ptr[offset], b_ptr[offset]);
     }
   }
   return 1;
