@@ -1,6 +1,6 @@
 {
   "name": "libwebp",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "summary": "Library to encode and decode images in WebP format.",
   "homepage": "http://anselz.com",
   "authors": "Google Inc.",
@@ -10,7 +10,7 @@
   },
   "source": {
     "git": "https://github.com/Anselz/libwebpd.git",
-    "tag": "v0.4.2"
+    "tag": "v0.4.3"
   },
   "compiler_flags": "-D_THREAD_SAFE",
   "requires_arc": false,
