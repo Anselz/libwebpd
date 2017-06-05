@@ -1,6 +1,6 @@
 {
   "name": "libwebp",
-  "version": "0.4.3",
+  "version": "0.5.1",
   "summary": "Library to encode and decode images in WebP format.",
   "homepage": "http://anselz.com",
   "authors": "Google Inc.",
